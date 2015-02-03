@@ -27,17 +27,26 @@ public class Image implements Serializable {
 	@Column(nullable = false)
 	private String name;
 
+	@Column
+	private String temporaryUrl;
+
+	@Column
+	private Date expires;
+
 	protected Image() {
 		// no-args constructor required by JPA spec
 		// this one is protected since it shouldn't be used directly
 	}
 
-	public Image(Date uploadTime, String imageUrl, String comment, String name) {
+	public Image(Date uploadTime, String imageUrl, String comment, String name,
+			String temporaryUrl, Date expires) {
 		super();
 		this.uploadTime = uploadTime;
 		this.imageUrl = imageUrl;
 		this.comment = comment;
 		this.name = name;
+		this.temporaryUrl = temporaryUrl;
+		this.expires = expires;
 	}
 
 	public Date getUploadTime() {
@@ -52,7 +61,7 @@ public class Image implements Serializable {
 		if (imageUrl.startsWith("I:")) {
 			String temp = "file:///" + imageUrl;
 			temp = temp.replaceAll("\\\\", "/");
-			temp="http://drawingsketchideas.com/images/1572-pin-it-like-it-thanks-obama-for-original-sin-etc.gif";
+			temp = "http://drawingsketchideas.com/images/1572-pin-it-like-it-thanks-obama-for-original-sin-etc.gif";
 			return temp;
 		}
 		return imageUrl;
@@ -76,6 +85,22 @@ public class Image implements Serializable {
 
 	public void setName(String name) {
 		this.name = name;
+	}
+
+	public String getTemporaryUrl() {
+		return temporaryUrl;
+	}
+
+	public void setTemporaryUrl(String temporaryUrl) {
+		this.temporaryUrl = temporaryUrl;
+	}
+
+	public Date getExpires() {
+		return expires;
+	}
+
+	public void setExpires(Date expires) {
+		this.expires = expires;
 	}
 
 }

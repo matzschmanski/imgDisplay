@@ -3,9 +3,6 @@ package imgDisplay.service;
 import imgDisplay.dao.Image;
 import imgDisplay.repository.ImageRepository;
 
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.util.Date;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +18,9 @@ import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.dropbox.core.DbxEntry;
+import com.dropbox.core.DbxUrlWithExpiration;
+
 @Component("imageService")
 @Transactional
 public class ImageServiceImpl implements ImageService {
@@ -29,6 +29,9 @@ public class ImageServiceImpl implements ImageService {
 
 	@Autowired
 	Environment environment;
+
+	@Autowired
+	DropBoxService dropBoxService;
 
 	@Autowired
 	public ImageServiceImpl(ImageRepository imageRepository) {
@@ -45,32 +48,46 @@ public class ImageServiceImpl implements ImageService {
 
 	@Override
 	public Image addImage(MultipartFile file, String name, String comment) {
-		String url = writeFileToImgStorage(file, name, comment);
-		Image newImage = new Image(new Date(), url, comment, name);
-		return imageRepository.save(newImage);
+		DbxEntry.File uploadedFile = writeFileToImgStorage(file, name, comment);
+		if (uploadedFile != null) {
+			DbxUrlWithExpiration url = dropBoxService.getUrlForFilePath(
+					uploadedFile.path, "thius");
+			Image image = new Image(new Date(), uploadedFile.path, comment,
+					name, url.url, url.expires);
+			return imageRepository.save(image);
+		} else {
+			return null;
+		}
 	}
 
-	private String writeFileToImgStorage(MultipartFile file, String name,
-			String comment) {
+	private DbxEntry.File writeFileToImgStorage(MultipartFile file,
+			String name, String comment) {
 		try {
-			byte[] bytes = file.getBytes();
-			File root = new File(environment.getProperty("imageRoot"));
-			root.mkdirs();
-			Date fileName = new Date();
-			File target = new File(root, fileName.getTime() + "");
-			BufferedOutputStream stream = new BufferedOutputStream(
-					new FileOutputStream(target));
-			stream.write(bytes);
-			stream.close();
-			return target.getAbsolutePath();
+
+			// upload to dropBox
+			DbxEntry.File uploadedFile = dropBoxService.uploadFile(file, name,
+					"thius");
+
+			return uploadedFile;
 		} catch (Exception e) {
-			return "You failed to upload " + name + " => " + e.getMessage();
+			return null;
 		}
 	}
 
 	@Override
 	public Page<Image> findImages(int page) {
 		Pageable pageSpecification = constructPageSpecification(page);
+		Page<Image> images = this.imageRepository.findAll(pageSpecification);
+		for (Image image : images.getContent()) {
+			if (image.getExpires().getTime() < new Date().getTime()) {
+				// refresh the url
+				DbxUrlWithExpiration newUrl = dropBoxService.getUrlForFilePath(
+						image.getImageUrl(), "thius");
+				image.setExpires(newUrl.expires);
+				image.setImageUrl(newUrl.url);
+				imageRepository.save(image);
+			}
+		}
 		return this.imageRepository.findAll(pageSpecification);
 	}
 

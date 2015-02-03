@@ -16,7 +16,9 @@ public class Application {
 		if (webPort == null || webPort.isEmpty()) {
 			webPort = "8080";
 		}
+
 		System.setProperty("server.port", webPort);
+
 		ApplicationContext ctx = SpringApplication.run(Application.class, args);
 	}
 }
