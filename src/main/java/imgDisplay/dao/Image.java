@@ -58,13 +58,9 @@ public class Image implements Serializable {
 	}
 
 	public String getImageUrl() {
-		if (imageUrl.startsWith("I:")) {
-			String temp = "file:///" + imageUrl;
-			temp = temp.replaceAll("\\\\", "/");
-			temp = "http://drawingsketchideas.com/images/1572-pin-it-like-it-thanks-obama-for-original-sin-etc.gif";
-			return temp;
-		}
-		return imageUrl;
+		String urlAsString = "http://178.62.232.129:8080/imgDisplay/imageStore/"
+				+ name;
+		return urlAsString;
 	}
 
 	public void setImageUrl(String imageUrl) {

@@ -22,4 +22,6 @@ public interface ImageService {
 
 	Page<Image> findImages(int page);
 
+	Image addImageToDropbox(MultipartFile file, String name, String comment);
+
 }

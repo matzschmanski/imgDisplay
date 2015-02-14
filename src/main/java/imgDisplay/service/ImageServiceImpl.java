@@ -3,6 +3,9 @@ package imgDisplay.service;
 import imgDisplay.dao.Image;
 import imgDisplay.repository.ImageRepository;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.Date;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +23,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.dropbox.core.DbxEntry;
 import com.dropbox.core.DbxUrlWithExpiration;
+import com.google.common.io.Files;
 
 @Component("imageService")
 @Transactional
@@ -47,8 +51,9 @@ public class ImageServiceImpl implements ImageService {
 	}
 
 	@Override
-	public Image addImage(MultipartFile file, String name, String comment) {
-		DbxEntry.File uploadedFile = writeFileToImgStorage(file, name, comment);
+	public Image addImageToDropbox(MultipartFile file, String name,
+			String comment) {
+		DbxEntry.File uploadedFile = uploadFileToDropbox(file, name, comment);
 		if (uploadedFile != null) {
 			DbxUrlWithExpiration url = dropBoxService.getUrlForFilePath(
 					uploadedFile.path, "thius");
@@ -60,8 +65,8 @@ public class ImageServiceImpl implements ImageService {
 		}
 	}
 
-	private DbxEntry.File writeFileToImgStorage(MultipartFile file,
-			String name, String comment) {
+	private DbxEntry.File uploadFileToDropbox(MultipartFile file, String name,
+			String comment) {
 		try {
 
 			// upload to dropBox
@@ -77,22 +82,27 @@ public class ImageServiceImpl implements ImageService {
 	@Override
 	public Page<Image> findImages(int page) {
 		Pageable pageSpecification = constructPageSpecification(page);
-		Page<Image> images = this.imageRepository.findAll(pageSpecification);
-		for (Image image : images.getContent()) {
-			if (image.getExpires().getTime() < new Date().getTime()) {
-				// refresh the url
-				DbxUrlWithExpiration newUrl = dropBoxService.getUrlForFilePath(
-						image.getImageUrl(), "thius");
-				image.setExpires(newUrl.expires);
-				image.setImageUrl(newUrl.url);
-				imageRepository.save(image);
-			}
-		}
+		// Page<Image> images = this.imageRepository.findAll(pageSpecification);
+		// for (Image image : images.getContent()) {
+		// if (image.getExpires() != null) {
+		// // get from dropbox
+		// if (image.getExpires().getTime() < new Date().getTime()) {
+		// // refresh the url
+		// DbxUrlWithExpiration newUrl = dropBoxService
+		// .getUrlForFilePath(image.getImageUrl(), "thius");
+		// image.setExpires(newUrl.expires);
+		// image.setImageUrl(newUrl.url);
+		// imageRepository.save(image);
+		// }
+		// } else {
+		// image.getImageUrl();
+		// }
+		// }
 		return this.imageRepository.findAll(pageSpecification);
 	}
 
 	private Pageable constructPageSpecification(int pageIndex) {
-		Pageable pageSpecification = new PageRequest(pageIndex, 1, sortByDate());
+		Pageable pageSpecification = new PageRequest(pageIndex, 5, sortByDate());
 		return pageSpecification;
 	}
 
@@ -137,5 +147,44 @@ public class ImageServiceImpl implements ImageService {
 	public Page<Image> findImages(Pageable pageable) {
 		// TODO Auto-generated method stub
 		return null;
+	}
+
+	@Override
+	public Image addImage(MultipartFile file, String name, String comment) {
+		File newFile = uploadFile(file, name);
+		if (newFile != null && newFile.exists()) {
+			Image image = new Image(new Date(), newFile.getAbsolutePath(),
+					comment, name, "", null);
+			return imageRepository.save(image);
+		} else {
+			return null;
+		}
+	}
+
+	private File uploadFile(MultipartFile file, String name) {
+		try {
+
+			FileInputStream inputStream = (FileInputStream) file
+					.getInputStream();
+			String imageRoot = environment.getProperty("imageRoot");
+			File targetFile = new File(imageRoot, name);
+			try {
+				byte[] buffer = new byte[inputStream.available()];
+				inputStream.read(buffer);
+				Files.write(buffer, targetFile);
+				System.out.println("Uploaded: " + targetFile.getAbsolutePath());
+			} catch (Exception e) {
+				e.printStackTrace();
+			} finally {
+				try {
+					inputStream.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+			return targetFile;
+		} catch (Exception e) {
+			return null;
+		}
 	}
 }

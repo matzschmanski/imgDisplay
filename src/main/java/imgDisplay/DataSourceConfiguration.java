@@ -34,8 +34,8 @@ public class DataSourceConfiguration {
 		basicDataSource.setUrl(dbUrl);
 		basicDataSource.setUsername(username);
 		basicDataSource.setPassword(password);
+		basicDataSource.setDriverClassName(driver);
 
 		return basicDataSource;
 	}
-
 }

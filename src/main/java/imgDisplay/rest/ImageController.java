@@ -40,7 +40,7 @@ public class ImageController {
 
 	@RequestMapping(value = "/viewAll", method = RequestMethod.GET)
 	public @ResponseBody Page<Image> getImages(
-			@RequestParam(value = "page", required = false, defaultValue = "1") int page) {
+			@RequestParam(value = "page", required = false, defaultValue = "0") int page) {
 		Page<Image> imagePage = imageService.findImages(page);
 		return imagePage;
 	}
